@@ -188,7 +188,7 @@ async function cards(){
  const price=entries.length?Math.min(...entries.map(p=>Number(p.price_usd))):d.referencePrice;
  return '<article class="destination-card" style="--dest-image:url('+d.image+')"><div class="destination-shade"></div><button type="button" class="destination-arrow" data-destination="'+X(d.code)+'" aria-label="Explore '+X(d.name)+' visa services">↗</button><div class="destination-content"><span class="flag">'+d.flag+'</span><h3>'+X(d.name.toUpperCase())+'</h3><div class="destination-details"><span><small>SERVICE</small><strong>'+X(d.enquiryOnly?'Consultation':'Visa services')+'</strong></span><span><small>STAY</small><strong>'+X(d.days)+'</strong></span><span><small>FEES FROM</small><strong>'+fmt(price||0)+'</strong></span></div></div></article>';
  }).join('');
- holder.querySelectorAll('[data-destination]').forEach(b=>b.onclick=()=>openPortal(b.dataset.destination));
+ holder.querySelectorAll('[data-destination]').forEach(b=>b.onclick=()=>{window.location.href="visa-detail.html?destination="+encodeURIComponent(b.dataset.destination)});
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const dialog=$('#visaPortalDialog');if(!dialog)return;
