@@ -174,12 +174,12 @@ async function openPortal(code){
  const dest=destByCode(code);if(!dest)return;
  ui.dest=dest;ui.step=0;ui.product=null;ui.nationality='';ui.residence='';ui.gcc='';ui.purpose='tourism';ui.travelDate='';ui.travelers=[{}];ui.app=null;ui.email='';ui.phone='';
  const dialog=$('#visaPortalDialog');if(!dialog)return;
- dialog.showModal();layout(baseHead('Loading visa services…','Retrieving the catalogue.'));
+ if(!document.body.dataset.visaDetail){window.location.href='visa-detail.html?destination='+encodeURIComponent(code);return;}layout(baseHead('Loading visa services…','Retrieving the catalogue.'));
  ui.products=await loadCatalog();
  if(!ui.products.length&&!dest.enquiryOnly){layout(baseHead('Services temporarily unavailable','The visa price catalogue cannot be loaded. Please try again later.'));$('#vpClose').onclick=closePortal;return}
  render();
 }
-function closePortal(){const d=$('#visaPortalDialog');if(d?.open)d.close();}
+function closePortal(){if(document.body.dataset.visaDetail){window.location.href='index.html#destinations';return;}const d=$('#visaPortalDialog');if(d?.open)d.close();}
 async function cards(){
  const all=await loadCatalog();
  const holder=$('#destinationCards');if(!holder)return;
@@ -192,7 +192,7 @@ async function cards(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const dialog=$('#visaPortalDialog');if(!dialog)return;
- dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
+ if(document.body.dataset.visaDetail){const code=new URLSearchParams(location.search).get('destination');if(code)openPortal(code);else layout(baseHead('Choose a visa destination','Select a destination from the visa catalogue.'));}else dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
  cards();
  const hero=$('#visaForm');if(hero){hero.addEventListener('submit',e=>{e.preventDefault();const selected=$('#destination').value;const map={'United Arab Emirates':'ae','Oman':'om','Turkey':'tr','Schengen Area':'eu','Thailand':'th','Indonesia':'id','Qatar':'qa'};const c=map[selected];if(c)openPortal(c);});}
  window.SkyBridgeVisa={open:openPortal};
