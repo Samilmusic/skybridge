@@ -14,7 +14,7 @@ async function loadPortal(){
  if(error){host.innerHTML='<p>Unable to load applications. Please try again.</p>';return;}
  host.innerHTML='<div class="portal-top"><h3>My applications</h3><button id="logoutBtn" class="btn ghost" type="button">Sign out</button></div><p class="muted">Signed in as '+escapeHTML(user.email||'')+'</p><div id="applications"></div><button class="btn" id="newAppBtn">Start visa enquiry</button><p id="appNotice" role="status"></p>';
  $('#logoutBtn').onclick=async()=>{await api.auth.signOut();loadPortal()};
- $('#newAppBtn').onclick=applicationForm;
+ $('#newAppBtn').onclick=()=>{document.querySelector('#portalDialog')?.close();document.querySelector('#destinations')?.scrollIntoView({behavior:'smooth'});};
  $('#applications').innerHTML=applications.length?applications.map(a=>'<div class="application-item"><strong>'+escapeHTML(a.reference)+'</strong><span>'+escapeHTML(a.destination_country)+' · '+escapeHTML(a.status)+'</span></div>').join(''):'<p>No applications yet.</p>';
 }
 function escapeHTML(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
