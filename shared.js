@@ -12,7 +12,7 @@ window.SkyBridge={
  }
 };
 document.addEventListener('DOMContentLoaded',()=>{
- const menu=document.querySelector('#mobileMenu'),toggle=document.querySelector('#menuToggle');if(menu&&toggle){toggle.onclick=()=>{const open=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(open));menu.hidden=!open;};menu.querySelectorAll('a').forEach(a=>a.onclick=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false')});document.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}})}
+
  window.SkyBridge.bind(document.querySelector('#contactForm'),'general');window.SkyBridge.bind(document.querySelector('#f'),'advertising');
  const params=new URLSearchParams(location.search);const interest=document.querySelector('#interest');if(interest&&[...interest.options].some(o=>o.value===params.get('service')))interest.value=params.get('service');const message=document.querySelector('#message');if(message&&params.get('message'))message.value=params.get('message').slice(0,3000);const s=params.get('service');const select=document.querySelector('select[name=service]');if(select&&s&&[...select.options].some(o=>o.value===s))select.value=s;
  document.querySelectorAll('.sb-year').forEach(e=>e.textContent=new Date().getFullYear());

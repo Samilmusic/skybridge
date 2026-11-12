@@ -25,4 +25,4 @@ function applicationForm(){
  $('#backBtn').onclick=loadPortal;
  $('#newApplication').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const payload={user_id:state.user.id,passport_country:fd.get('nationality'),residence_country:fd.get('residence'),destination_country:fd.get('destination'),purpose:fd.get('purpose'),notes:fd.get('notes')};const {error}=await api.from('visa_applications').insert(payload);if(error)notify('Unable to save enquiry. '+error.message,true);else loadPortal();};
 }
-document.addEventListener('DOMContentLoaded',()=>{const open=$('#portalOpen'),close=$('#portalClose'),dialog=$('#portalDialog');if(open)open.onclick=showPortal;if(close)close.onclick=()=>dialog.close();if(dialog)dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});});
+document.addEventListener('DOMContentLoaded',()=>{const open=$('#portalOpen'),close=$('#portalClose'),dialog=$('#portalDialog');if(open){open.onclick=showPortal;if(new URLSearchParams(location.search).get('portal')==='open')showPortal();}if(close)close.onclick=()=>dialog.close();if(dialog)dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});});
