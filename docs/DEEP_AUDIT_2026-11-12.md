@@ -15,14 +15,14 @@ Consequences observed in the production browser:
 - Multiple Supabase Auth clients are created. The browser logs the corresponding shared-storage warning.
 - The stale login UI does not show the newly implemented password recovery link.
 
-**Prepared fix:** content-hash version keys on every local JS/CSS reference; an HTML revalidation policy in `.htaccess`; a repeatable versioning step in the build; and `release.json` to identify the expected browser assets. These frontend changes still require publication and live verification. The fact that a GitHub commit exists must not be reported as a verified Hostinger release.
+**Implemented and published fix:** content-hash version keys on every local JS/CSS reference; an HTML revalidation policy in `.htaccess`; a repeatable versioning step in the build; and `release.json` to identify the expected browser assets. Production verification subsequently confirmed that the root HTML matches the updated source and all 11 versioned assets match their expected hashes. The standalone UAE visa page was opened on the live domain and progressed successfully to Traveler information. The old multi-client Auth warning was absent from that fresh page. This verifies the cache-safe technical release; it does not resolve the catalogue/content gaps below.
 
 ## Confirmed functional problems
 
 | Severity | Journey | Evidence and effect | Resolution |
 | --- | --- | --- | --- |
-| Critical | Destination landing pages | Old script ignores the destination stored in the newer HTML; the form does not initialize on the standalone route | Version browser assets; verify both standalone and legacy URL routes after deployment |
-| High | Schengen consultation | Source text refers to the VEEZO report; summary shows $0 while the preceding card quotes $99; Contact us points to a local `#contact` which does not exist and the handler redirects toward destinations | New consultation route transfers context to the real enquiry form; it becomes effective when the correct JS loads |
+| Critical | Destination landing pages | Old script ignores the destination stored in the newer HTML; the form does not initialize on the standalone route | Versioned assets published; standalone UAE destination form and traveler step verified live |
+| High | Schengen consultation | Source text refers to the VEEZO report; summary shows $0 while the preceding card quotes $99; Contact us points to a local `#contact` which does not exist and the handler redirects toward destinations | New consultation route transfers context to the real enquiry form; the correct JavaScript is now served using versioned references |
 | High | Visa finder | Legacy country lists, destination-only transfer, missing routes for Other | Current source contains the complete country list and context transfer; fix the stale script loading |
 | High | Staff follow-up | `skybridge_staff` contains zero accounts at audit time | An explicitly selected, registered user must receive the intended staff role; do not invent an administrator identity |
 | Medium | Travel enquiry CTA | Travel page uses an unescaped ampersand inside the service query; preselection becomes `Travel ` instead of `Travel & tourism` | Corrected the query encoding |
