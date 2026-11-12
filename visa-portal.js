@@ -3,7 +3,7 @@
 'use strict';
 const D=window.SKYBRIDGE_VISA_DATA;
 const C=window.SKYBRIDGE_CONFIG||{};
-const db=(C.supabaseUrl&&C.supabaseAnonKey&&window.supabase)?window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey):null;
+const db=(C.supabaseUrl&&C.supabaseAnonKey&&window.supabase)?window.SkyBridgeDB:null;
 const $=(s,root=document)=>root.querySelector(s);
 const X=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ui={dest:null,step:0,products:[],product:null,nationality:'',residence:'',gcc:'',purpose:'tourism',travelDate:'',travelers:[{}],notes:'',user:null,app:null,loading:false};
@@ -11,15 +11,18 @@ const flag=code=>{try{return code.toUpperCase().split('').map(c=>String.fromCode
 const countries=()=>D.countries.map(c=>'<option value="'+X(c.code)+'">'+flag(c.code)+' '+X(c.name)+'</option>').join('');
 function options(selected,placeholder='Select country'){return '<option value="">'+placeholder+'</option>'+countries();}
 const destByCode=code=>D.destinations.find(d=>d.code===code);
-const fmt=v=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const fmt=v=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})+' USD';
+const aed=v=>'≈ AED '+(Number(v)*3.6725).toLocaleString('en-AE',{maximumFractionDigits:2});
+let catalogPromise;const withTimeout=(query)=>Promise.race([query,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Catalogue connection timed out')),9000))]);
 function showError(msg){const e=$('#vpFeedback');if(e){e.textContent=msg;e.style.color='#ab251b';}}
 function setLoader(on){ui.loading=on;const b=$('#vpNext');if(b){b.disabled=on;b.textContent=on?'Processing…':b.dataset.label||'Continue →';}}
 async function loadCatalog(){
- if(!db)return [];
- const {data,error}=await db.from('visa_products').select('id,destination_code,title,stay_label,entry_type,price_usd,display_order').eq('is_active',true).order('display_order');
- if(error){console.warn('Sky Bridge visa catalogue:',error.message);return []}
- return data||[];
+ if(!db)throw new Error('The catalogue is not configured.');
+ if(!catalogPromise)catalogPromise=withTimeout(db.from('visa_products').select('id,destination_code,title,stay_label,entry_type,price_usd,display_order').eq('is_active',true).order('display_order')).then(({data,error})=>{if(error)throw error;return data||[]}).catch(e=>{catalogPromise=null;throw e});
+ return catalogPromise;
 }
+function catalogError(target,retry){target.innerHTML='<p role="alert">We could not load current visa options. Please retry or contact our team.</p><button type="button" class="vp-primary" id="catalogRetry">Try again</button> <a href="https://wa.me/971502423340">WhatsApp support</a>';target.querySelector('#catalogRetry').onclick=retry;}
+
 function defaultProduct(d){return ui.products.filter(p=>p.destination_code===d.code).sort((a,b)=>Number(a.price_usd)-Number(b.price_usd))[0]}
 function allowedProducts(){
  let products=ui.products.filter(p=>p.destination_code===ui.dest.code);
@@ -74,12 +77,12 @@ function render(){
   field('Current country of residence','<select id="vpResidence" required>'+options(ui.residence)+'</select>')+'</div>'+
   (dest.code==='om'?field('Are you a GCC resident?','<select id="vpGCC" required><option value="">Select</option><option value="yes">Yes — GCC resident</option><option value="no">No — non-GCC resident</option></select>'):'')+
   '<div class="vp-hint">'+X(hint())+'</div>'+
-  (dest.enquiryOnly?'<p class="vp-warning">Schengen consultations are handled manually. The VEEZO source did not contain a complete Schengen visa checkout product; the $99 shown on the source card is not a selectable visa product.</p>':
-  '<h3 class="vp-section-title">Available products</h3><div class="vp-products">'+(filtered.length?filtered.map(v=>'<label class="vp-product '+(v.id===p?.id?'selected':'')+'"><input type="radio" name="vpProduct" value="'+X(v.id)+'" '+(v.id===p?.id?'checked':'')+'><span><b>'+X(v.title)+'</b><small>'+X(v.stay_label)+' · '+X(v.entry_type)+'</small></span><strong>'+fmt(v.price_usd)+'</strong></label>').join(''):'<div class="vp-warning">Select your residence status to see available options.</div>')+'</div>')+
+  (dest.enquiryOnly?'<p class="vp-warning">Schengen assistance starts with an individual consultation. The indicative consultation fee is not a visa fee. Your consulate, appointment route, documents and final charges will be confirmed before proceeding.</p>':
+  '<h3 class="vp-section-title">Available products</h3><div class="vp-products">'+(filtered.length?filtered.map(v=>'<label class="vp-product '+(v.id===p?.id?'selected':'')+'"><input type="radio" name="vpProduct" value="'+X(v.id)+'" '+(v.id===p?.id?'checked':'')+'><span><b>'+X(v.title)+'</b><small>'+X(v.stay_label)+' · '+X(v.entry_type)+'</small></span><strong>'+fmt(v.price_usd)+'<small class="sb-currency">'+aed(v.price_usd)+'</small></strong></label>').join(''):'<div class="vp-warning">Select your residence status to see available options.</div>')+'</div>')+
   '<div class="vp-row">'+field('Purpose of travel','<select id="vpPurpose"><option value="tourism">Tourism</option><option value="business">Business</option><option value="family">Family visit</option><option value="other">Other</option></select>')+
   field('Estimated departure date','<input id="vpTravelDate" type="date">')+'</div>'+
   '<div class="vp-actions"><button id="vpNext" data-label="'+(dest.enquiryOnly?'Request consultation →':'Continue to travelers →')+'" class="vp-primary">'+(dest.enquiryOnly?'Request consultation →':'Continue to travelers →')+'</button></div>'+
-  '<p id="vpFeedback" role="alert"></p></div><aside class="vp-summary"><div class="vp-summary-photo" style="background-image:linear-gradient(transparent,#00211edc),url(&quot;'+X(dest.image)+'&quot;)"><span>'+dest.flag+'</span><strong>'+X(dest.name)+'</strong></div><h4>Order summary</h4><div class="vp-summary-line"><span>Service</span><b>'+X(p?.title||'Select visa')+'</b></div><div class="vp-summary-line"><span>Reference processing</span><b>'+X(dest.process)+'</b></div><div class="vp-summary-line total"><span>Price per traveler</span><b>'+fmt(p?.price_usd||0)+'</b></div><p class="vp-small">Prices in USD are taken from the supplied VEEZO product catalogue. Final approval and immigration fees depend on the authorities. Payment is not enabled.</p></aside></div>');
+  '<p id="vpFeedback" role="alert"></p></div><aside class="vp-summary"><div class="vp-summary-photo" style="background-image:linear-gradient(transparent,#00211edc),url(&quot;'+X(dest.image)+'&quot;)"><span>'+dest.flag+'</span><strong>'+X(dest.name)+'</strong></div><h4>Order summary</h4><div class="vp-summary-line"><span>Service</span><b>'+X(p?.title||'Select visa')+'</b></div><div class="vp-summary-line"><span>Reference processing</span><b>'+X(dest.process)+'</b></div><div class="vp-summary-line total"><span>Price per traveler</span><b>'+fmt(p?.price_usd||0)+'<small class="sb-currency">'+aed(p?.price_usd||0)+'</small></b></div><p class="vp-small">Indicative prices in USD. AED equivalents use 3.6725 for guidance; your final quote states the payable currency, service fees, government charges and applicable taxes separately. No payment is taken here.</p></aside></div>');
   $('#vpNationality').value=ui.nationality;$('#vpResidence').value=ui.residence;
   if(dest.code==='om')$('#vpGCC').value=ui.gcc;
   $('#vpPurpose').value=ui.purpose;$('#vpTravelDate').value=ui.travelDate;$('#vpTravelDate').min=new Date().toISOString().slice(0,10);
@@ -88,7 +91,7 @@ function render(){
   if(dest.code==='om')$('#vpGCC').onchange=e=>{ui.gcc=e.target.value;render();};
   document.querySelectorAll('[name=vpProduct]').forEach(e=>e.onchange=()=>{ui.product=filtered.find(p=>p.id===e.value);render();});
   $('#vpPurpose').onchange=e=>ui.purpose=e.target.value;$('#vpTravelDate').onchange=e=>ui.travelDate=e.target.value;
-  $('#vpNext').onclick=()=>{if(!ui.nationality||!ui.residence)return showError('Please select nationality and country of residence.');if(dest.enquiryOnly)return consultation();if(!ui.product)return showError('Please select a visa type.');ui.travelers[0].nationality=ui.nationality;ui.step=1;render()};
+  $('#vpNext').onclick=()=>{if(!ui.nationality||!ui.residence)return showError('Please select nationality and country of residence.');if(dest.enquiryOnly)return consultation();if(!ui.product)return showError('Please select a visa type.');if(ui.travelDate&&ui.travelDate<new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Dubai'}))return showError('Departure date cannot be in the past.');ui.travelers[0].nationality=ui.nationality;ui.step=1;render()};
  }else if(ui.step===1)renderTravelers();
  else if(ui.step===2)renderReview();
  else if(ui.step===3)renderDocuments();
@@ -99,7 +102,7 @@ function travelerForm(t,i){
  field('First name *','<input required maxlength="80" name="first_name" value="'+X(t.first_name||'')+'">')+
  field('Last name *','<input required maxlength="80" name="last_name" value="'+X(t.last_name||'')+'">')+'</div><div class="vp-row">'+
  field('Nationality *','<select required name="nationality">'+options()+'</select>')+
- field('Date of birth *','<input required type="date" name="date_of_birth" value="'+X(t.date_of_birth||'')+'">')+'</div><div class="vp-row">'+
+ field('Date of birth *','<input required type="date" name="date_of_birth" max="'+new Date().toISOString().slice(0,10)+'" value="'+X(t.date_of_birth||'')+'">')+'</div><div class="vp-row">'+
  field('Gender','<select name="gender"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>')+
  field('City of residence','<input name="city" maxlength="100" value="'+X(t.city||'')+'">')+'</div>'+
  field('Residential address','<input name="address" maxlength="250" value="'+X(t.address||'')+'">')+'</section>';
@@ -116,31 +119,28 @@ function renderTravelers(){
  '<div class="vp-actions"><button class="vp-secondary" type="button" id="vpBack">← Back</button><button id="vpNext" data-label="Review application →" class="vp-primary">Review application →</button></div><p id="vpFeedback" role="alert"></p></div><aside class="vp-summary"><h4>Application total</h4><div class="vp-summary-line"><span>Visa</span><b>'+X(ui.product.title)+'</b></div><div class="vp-summary-line"><span>Travelers</span><b>'+ui.travelers.length+'</b></div><div class="vp-summary-line total"><span>Subtotal</span><b>'+fmt(ui.product.price_usd*ui.travelers.length)+'</b></div><p class="vp-small">Documents are uploaded securely after the application record is created. Payment is not currently available.</p></aside></div>');
  document.querySelectorAll('.vp-traveler').forEach((form,i)=>{form.querySelector('[name=nationality]').value=ui.travelers[i].nationality||ui.nationality;form.querySelector('[name=gender]').value=ui.travelers[i].gender||'';});
  $('#vpAddTraveler').onclick=()=>{saveTravelerEntries();ui.email=$('#vpEmail').value;ui.phone=$('#vpPhone').value;if(ui.travelers.length>=10)return showError('Maximum 10 travelers per application.');ui.travelers.push({nationality:ui.nationality});render();};
- document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{saveTravelerEntries();ui.travelers.splice(Number(b.dataset.remove),1);render()});
+ document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{saveTravelerEntries();ui.email=$('#vpEmail').value;ui.phone=$('#vpPhone').value;ui.travelers.splice(Number(b.dataset.remove),1);render()});
  $('#vpBack').onclick=()=>{saveTravelerEntries();ui.email=$('#vpEmail').value;ui.phone=$('#vpPhone').value;ui.step=0;render()};
- $('#vpNext').onclick=()=>{saveTravelerEntries();ui.email=$('#vpEmail').value.trim();ui.phone=$('#vpPhone').value.trim();if(!ui.email||!ui.phone||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ui.email))return showError('Enter a valid contact email and phone number.');for(let i=0;i<ui.travelers.length;i++){const t=ui.travelers[i];if(!t.first_name||!t.last_name||!t.nationality||!t.date_of_birth)return showError('Complete all required fields for traveler '+(i+1));}ui.step=2;render()};
+ $('#vpNext').onclick=()=>{saveTravelerEntries();ui.email=$('#vpEmail').value.trim();ui.phone=$('#vpPhone').value.trim();if(!ui.email||!ui.phone||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ui.email))return showError('Enter a valid contact email and phone number.');for(let i=0;i<ui.travelers.length;i++){const t=ui.travelers[i];if(!t.first_name.trim()||!t.last_name.trim()||!t.nationality||!t.date_of_birth||t.date_of_birth>new Date().toISOString().slice(0,10))return showError('Complete all required fields for traveler '+(i+1));}ui.step=2;render()};
 }
 function renderReview(){
  const total=Number(ui.product.price_usd)*ui.travelers.length;
  layout(baseHead('Review your request','Confirm the details before secure submission.')+steps()+'<div class="vp-layout"><div class="vp-main"><div class="vp-review-box"><div class="vp-review-big">'+X(ui.dest.name)+' <span>'+fmt(total)+'</span></div><p>'+X(ui.product.title)+' · '+X(ui.product.stay_label)+'</p><div class="vp-summary-line"><span>Passport</span><b>'+X(ui.nationality)+'</b></div><div class="vp-summary-line"><span>Residence</span><b>'+X(ui.residence)+'</b></div><div class="vp-summary-line"><span>Applicants</span><b>'+ui.travelers.length+'</b></div><div class="vp-summary-line"><span>Contact</span><b>'+X(ui.email)+'</b></div></div><h3 class="vp-section-title">Travelers</h3>'+ui.travelers.map((t,i)=>'<p>'+(i+1)+'. '+X(t.first_name)+' '+X(t.last_name)+' — '+X(t.nationality)+'</p>').join('')+
  '<p class="vp-warning">Submitting saves your enquiry and does not charge any payment. Visa eligibility, requirements and processing times will be confirmed individually. Visa approval is not guaranteed.</p>'+
- '<label class="vp-check"><input id="vpConsent" type="checkbox"> I confirm the information is accurate and agree to the processing of these details for my visa service request.</label>'+
+ '<label class="vp-check"><input id="vpConsent" type="checkbox"> I confirm I have permission to submit these traveler details and have read the <a href="privacy.html">privacy notice</a> and <a href="terms.html">service terms</a>.</label>'+
  '<div class="vp-actions"><button class="vp-secondary" id="vpBack" type="button">← Back</button><button class="vp-primary" id="vpNext" data-label="Submit request securely →">Submit request securely →</button></div><p id="vpFeedback" role="alert"></p></div><aside class="vp-summary"><h4>Summary</h4><div class="vp-summary-line"><span>Per traveler</span><b>'+fmt(ui.product.price_usd)+'</b></div><div class="vp-summary-line"><span>Travelers</span><b>'+ui.travelers.length+'</b></div><div class="vp-summary-line total"><span>Request value</span><b>'+fmt(total)+'</b></div><p class="vp-small">No payment is collected at this stage.</p></aside></div>');
  $('#vpBack').onclick=()=>{ui.step=1;render()};$('#vpNext').onclick=()=>{if(!$('#vpConsent').checked)return showError('Please confirm your consent.');submit()};
 }
 async function submit(){
- if(!db)return showError('Secure submissions are not configured yet.');
+ if(ui.loading)return;if(!db)return showError('Secure submissions are not configured yet.');
  setLoader(true);let user=ui.user;
  if(!user){const {data}=await db.auth.getUser();user=data?.user}
  if(!user){setLoader(false);return renderAuth()}
  try{
   const application={user_id:user.id,visa_product_id:ui.product.id,passport_country:ui.nationality,residence_country:ui.residence,destination_country:ui.dest.code,purpose:ui.purpose,contact_email:ui.email,contact_phone:ui.phone,applicant_count:ui.travelers.length,travel_date:ui.travelDate||null,notes:ui.notes||null};
-  const {data:a,error}=await db.from('visa_applications').insert(application).select('id,reference,price_usd,status').single();
+  const {data:a,error}=await db.rpc('submit_visa_request',{request_id:ui.requestId,application,travelers:ui.travelers});
   if(error)throw error;
   ui.app=a;ui.user=user;
-  const travelers=ui.travelers.map(t=>({application_id:a.id,first_name:t.first_name,last_name:t.last_name,nationality:t.nationality,date_of_birth:t.date_of_birth,gender:t.gender||null,city:t.city||null,address:t.address||null}));
-  const {error:te}=await db.from('visa_travelers').insert(travelers);
-  if(te){ui.step=3;render();return showError('Application saved ('+a.reference+'), but traveler details could not be added. Please contact support and do not submit a duplicate request. '+te.message)}
   ui.step=3;render();
  }catch(e){showError('Submission failed: '+(e.message||'Please retry.'))}finally{setLoader(false)}
 }
@@ -150,7 +150,7 @@ function renderAuth(){
  field('Email','<input type="email" id="vpLoginEmail" value="'+X(ui.email||'')+'" required autocomplete="email">')+
  field('Password','<input type="password" id="vpLoginPassword" required minlength="8" autocomplete="current-password">')+
  '<div class="vp-actions"><button class="vp-primary" type="button" id="vpLogin">Sign in & submit →</button><button class="vp-secondary" type="button" id="vpSignup">Create account</button></div>'+
- '<p id="vpFeedback" role="status"></p><button class="vp-backlink" id="vpBack" type="button">← Return to review</button></div>');
+ '<p><a href="reset-password.html" target="_blank" rel="noopener">Forgot password? Open recovery in a new tab</a></p><p id="vpFeedback" role="status"></p><button class="vp-backlink" id="vpBack" type="button">← Return to review</button></div>');
  $('#vpBack').onclick=render;
  $('#vpLogin').onclick=async()=>{const email=$('#vpLoginEmail').value,password=$('#vpLoginPassword').value;if(!email||!password)return showError('Enter your email and password.');const {data,error}=await db.auth.signInWithPassword({email,password});if(error)return showError(error.message);ui.user=data.user;submit()};
  $('#vpSignup').onclick=async()=>{const email=$('#vpLoginEmail').value,password=$('#vpLoginPassword').value;if(!email||password.length<8)return showError('Enter an email and password of at least eight characters.');const {data,error}=await db.auth.signUp({email,password});if(error)return showError(error.message);if(data.session){ui.user=data.user;submit()}else showError('Account created. Confirm the email we sent you, then sign in to submit your application.');};
@@ -166,35 +166,37 @@ function renderDocuments(){
  $('#vpDone').onclick=closePortal;
 }
 function consultation(){
- const d=ui.dest;const p=new URLSearchParams({subject:'Sky Bridge Schengen visa consultation',body:'Destination: '+d.name+'\nPassport: '+ui.nationality+'\nResidence: '+ui.residence+'\nPurpose: '+ui.purpose+'\n\nPlease contact me about visa assistance.'});
- layout(baseHead('Schengen consultation','The reference source only provides a consultation listing for this destination.')+'<div class="vp-auth-card"><p>Indicative consultation reference: $99. No online Schengen visa checkout is available.</p><p>Contact Sky Bridge using the main enquiry form to discuss consulate requirements, services and applicable pricing.</p><a class="vp-primary" href="#contact" id="vpContact">Contact us →</a></div>');
- $('#vpContact').onclick=closePortal;
+ window.location.href='index.html?service='+encodeURIComponent('Visa & global mobility')+'&message='+encodeURIComponent('Schengen consultation. Passport: '+ui.nationality+'. Residence: '+ui.residence+'. Purpose: '+ui.purpose+'.')+'#contact';
 }
 async function openPortal(code){
  const dest=destByCode(code);if(!dest)return;
- ui.dest=dest;ui.step=0;ui.product=null;ui.nationality='';ui.residence='';ui.gcc='';ui.purpose='tourism';ui.travelDate='';ui.travelers=[{}];ui.app=null;ui.email='';ui.phone='';
+ ui.requestId=crypto.randomUUID();ui.dest=dest;document.title=dest.name+' Visa Assistance | Sky Bridge';const desc=document.querySelector('meta[name=description]');if(desc)desc.content='Compare '+dest.name+' visa assistance, indicative fees and required traveler information.';ui.step=0;ui.product=null;ui.nationality='';ui.residence='';ui.gcc='';ui.purpose='tourism';ui.travelDate='';ui.travelers=[{}];ui.app=null;ui.email='';ui.phone='';
+ const params=new URLSearchParams(location.search);ui.nationality=D.countries.some(c=>c.code===params.get('passport'))?params.get('passport'):'';ui.residence=D.countries.some(c=>c.code===params.get('residence'))?params.get('residence'):'';
  const dialog=$('#visaPortalDialog');if(!dialog)return;
- if(!document.body.dataset.visaDetail){window.location.href='visa-detail.html?destination='+encodeURIComponent(code);return;}layout(baseHead('Loading visa services…','Retrieving the catalogue.'));
- ui.products=await loadCatalog();
+ if(!document.body.dataset.visaDetail){window.location.href='visa-'+encodeURIComponent(code)+'.html';return;}layout(baseHead('Loading visa services…','Retrieving the catalogue.'));
+ try{ui.products=await loadCatalog();}catch{catalogError($('#visaPortalBody'),()=>openPortal(code));return;}
  if(!ui.products.length&&!dest.enquiryOnly){layout(baseHead('Services temporarily unavailable','The visa price catalogue cannot be loaded. Please try again later.'));$('#vpClose').onclick=closePortal;return}
  render();
 }
 function closePortal(){if(document.body.dataset.visaDetail){window.location.href='index.html#destinations';return;}const d=$('#visaPortalDialog');if(d?.open)d.close();}
 async function cards(){
- const all=await loadCatalog();
- const holder=$('#destinationCards');if(!holder)return;
+ const holder=$('#destinationCards');if(!holder)return;let all;try{all=await loadCatalog();}catch{catalogError(holder,cards);return;}
  holder.innerHTML=D.destinations.map(d=>{
  const entries=all.filter(p=>p.destination_code===d.code);
- const price=entries.length?Math.min(...entries.map(p=>Number(p.price_usd))):d.referencePrice;
- return '<article class="destination-card" style="--dest-image:url('+d.image+')"><div class="destination-shade"></div><button type="button" class="destination-arrow" data-destination="'+X(d.code)+'" aria-label="Explore '+X(d.name)+' visa services">↗</button><div class="destination-content"><span class="flag">'+d.flag+'</span><h3>'+X(d.name.toUpperCase())+'</h3><div class="destination-details"><span><small>SERVICE</small><strong>'+X(d.enquiryOnly?'Consultation':'Visa services')+'</strong></span><span><small>STAY</small><strong>'+X(d.days)+'</strong></span><span><small>FEES FROM</small><strong>'+fmt(price||0)+'</strong></span></div></div></article>';
+ const price=entries.length?Math.min(...entries.map(p=>Number(p.price_usd))):null;
+ return '<article class="destination-card" style="--dest-image:url('+d.image+')"><div class="destination-shade"></div><button type="button" class="destination-arrow" data-destination="'+X(d.code)+'" aria-label="Explore '+X(d.name)+' visa services">↗</button><div class="destination-content"><span class="flag">'+d.flag+'</span><h3>'+X(d.name.toUpperCase())+'</h3><div class="destination-details"><span><small>SERVICE</small><strong>'+X(d.enquiryOnly?'Consultation':'Visa services')+'</strong></span><span><small>STAY</small><strong>'+X(d.days)+'</strong></span><span><small>FEES FROM</small><strong>'+(price!==null?fmt(price):'Request a quote')+'</strong></span></div></div></article>';
  }).join('');
- holder.querySelectorAll('[data-destination]').forEach(b=>b.onclick=()=>{window.location.href="visa-detail.html?destination="+encodeURIComponent(b.dataset.destination)});
+ holder.querySelectorAll('[data-destination]').forEach(b=>b.onclick=()=>{window.location.href="visa-"+encodeURIComponent(b.dataset.destination)+".html"});
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const dialog=$('#visaPortalDialog');if(!dialog)return;
- if(document.body.dataset.visaDetail){const code=new URLSearchParams(location.search).get('destination');if(code)openPortal(code);else layout(baseHead('Choose a visa destination','Select a destination from the visa catalogue.'));}else dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
+ if(document.body.dataset.visaDetail){const code=(new URLSearchParams(location.search).get('destination')||document.body.dataset.destination);if(code)openPortal(code);else layout(baseHead('Choose a visa destination','Select a destination from the visa catalogue.'));}else dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
  cards();
- const hero=$('#visaForm');if(hero){hero.addEventListener('submit',e=>{e.preventDefault();const selected=$('#destination').value;const map={'United Arab Emirates':'ae','Oman':'om','Turkey':'tr','Schengen Area':'eu','Thailand':'th','Indonesia':'id','Qatar':'qa'};const c=map[selected];if(c)openPortal(c);});}
+ const hero=$('#visaForm');if(hero){
+ $('#passport').innerHTML=options();$('#residency').innerHTML=options();
+ $('#destination').innerHTML='<option value="">Select destination</option>'+D.destinations.map(d=>'<option value="'+X(d.code)+'">'+X(d.name)+'</option>').join('')+'<option value="other">Another destination</option>';
+ hero.addEventListener('submit',e=>{e.preventDefault();const c=$('#destination').value,passport=$('#passport').value,residence=$('#residency').value;if(c==='other'){window.location.href='index.html?service='+encodeURIComponent('Visa & global mobility')+'#contact';return;}window.location.href='visa-'+encodeURIComponent(c)+'.html?'+new URLSearchParams({passport,residence});});}
+
  window.SkyBridgeVisa={open:openPortal};
 });
 })();

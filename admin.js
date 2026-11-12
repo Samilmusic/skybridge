@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 const cfg=window.SKYBRIDGE_CONFIG||{};
-const api=cfg.supabaseUrl&&cfg.supabaseAnonKey&&window.supabase?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
+const api=cfg.supabaseUrl&&cfg.supabaseAnonKey&&window.supabase?window.SkyBridgeDB:null;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n).toLocaleString('en-US',{maximumFractionDigits:2});

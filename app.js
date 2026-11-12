@@ -2,14 +2,14 @@
 const config=window.SKYBRIDGE_CONFIG||{};
 const $=s=>document.querySelector(s);
 const state={client:null,user:null};
-const api=config.supabaseUrl&&config.supabaseAnonKey?window.supabase?.createClient(config.supabaseUrl,config.supabaseAnonKey):null;
+const api=config.supabaseUrl&&config.supabaseAnonKey?window.SkyBridgeDB:null;
 function notify(message,error=false){const el=$('#appNotice');if(!el)return;el.textContent=message;el.style.color=error?'#ff9b9b':'#d5fb09';}
 function showPortal(){const dialog=$('#portalDialog');if(!dialog)return;dialog.showModal();loadPortal();}
 async function loadPortal(){
  const host=$('#portalContent');if(!host)return;
  if(!api){host.innerHTML='<p>Customer portal setup is in progress. Online applications are not yet available.</p>';return;}
  const {data:{user}}=await api.auth.getUser();state.user=user;
- if(!user){host.innerHTML='<form id="loginForm"><h3>Secure customer sign in</h3><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Password<input name="password" type="password" minlength="8" required autocomplete="current-password"></label><button class="btn">Sign in</button><button class="btn ghost" type="button" id="signupBtn">Create account</button><p id="appNotice" role="status"></p></form>';$('#loginForm').onsubmit=login;$('#signupBtn').onclick=signup;return;}
+ if(!user){host.innerHTML='<form id="loginForm"><h3>Secure customer sign in</h3><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Password<input name="password" type="password" minlength="8" required autocomplete="current-password"></label><button class="btn">Sign in</button><button class="btn ghost" type="button" id="signupBtn">Create account</button><a href="reset-password.html">Forgot password?</a><p id="appNotice" role="status"></p></form>';$('#loginForm').onsubmit=login;$('#signupBtn').onclick=signup;return;}
  const {data:applications,error}=await api.from('visa_applications').select('id,reference,status,destination_country,created_at').order('created_at',{ascending:false}).limit(50);
  if(error){host.innerHTML='<p>Unable to load applications. Please try again.</p>';return;}
  host.innerHTML='<div class="portal-top"><h3>My applications</h3><button id="logoutBtn" class="btn ghost" type="button">Sign out</button></div><p class="muted">Signed in as '+escapeHTML(user.email||'')+'</p><div id="applications"></div><button class="btn" id="newAppBtn">Start visa enquiry</button><p id="appNotice" role="status"></p>';
