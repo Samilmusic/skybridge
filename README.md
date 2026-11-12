@@ -15,7 +15,7 @@ Use the connected Sky Bridge project: `fmgyezxxxvzhwmqlkabt`. Existing customer 
 - The document bucket remains private. Clients use their own authenticated session.
 - `website_rate_limits` intentionally has RLS and no customer policies; only server-role operations can use it.
 
-### Resend activation (not configured at implementation time)
+### Resend configuration (provider delivery verified 12 November 2026)
 1. Verify the Sky Bridge sending domain in Resend and add the exact DNS records Resend provides. Preserve mailbox MX records.
 2. In Supabase **Edge Functions → Secrets**, set:
    - `RESEND_API_KEY`: a restricted sending API key for the verified Sky Bridge domain.
@@ -42,3 +42,8 @@ Verified during implementation:
 
 ## Content still requiring owner material
 Do not fabricate licence numbers, staff identities, customer testimonials, performance metrics or case studies. Add the current licence/legal entity details, approved team profiles and permissioned case studies when supplied. Catalogue fees, third-party rules and exact refunds/inclusions require a written provider-confirmed quote; website copy makes this explicit.
+
+## Deep audit and cache-safe releases
+See `docs/DEEP_AUDIT_2026-11-12.md` for confirmed live functional/content findings. Production inspection found stale unversioned JavaScript alongside updated HTML. `python build.py` now runs `scripts/version-assets.py`, placing content hashes on browser JS/CSS references and generating `release.json`. Publish all changed HTML and assets together. `.htaccess` requests revalidation of entrypoints on compatible Hostinger hosting. Verify the live page references the expected versioned asset before claiming a release is active.
+
+The notification template is shared by initial sends and staff retries in `supabase/functions/_shared/enquiry-email.mjs`; run `node tests/email-template.mjs` to check escaping, readable fields and deterministic resend payloads. Supabase deployment must include the shared module and explicitly set the function-local `deno.json` import-map path.

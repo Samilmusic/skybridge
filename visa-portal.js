@@ -169,7 +169,7 @@ function consultation(){
  window.location.href='index.html?service='+encodeURIComponent('Visa & global mobility')+'&message='+encodeURIComponent('Schengen consultation. Passport: '+ui.nationality+'. Residence: '+ui.residence+'. Purpose: '+ui.purpose+'.')+'#contact';
 }
 async function openPortal(code){
- const dest=destByCode(code);if(!dest)return;
+ const dest=destByCode(code);if(!dest){layout(baseHead('Choose a visa destination','This destination is unavailable. Please choose an available service.')+'<p><a class="vp-primary" href="index.html#destinations">View all destinations →</a></p>');return;}
  ui.requestId=crypto.randomUUID();ui.dest=dest;document.title=dest.name+' Visa Assistance | Sky Bridge';const desc=document.querySelector('meta[name=description]');if(desc)desc.content='Compare '+dest.name+' visa assistance, indicative fees and required traveler information.';ui.step=0;ui.product=null;ui.nationality='';ui.residence='';ui.gcc='';ui.purpose='tourism';ui.travelDate='';ui.travelers=[{}];ui.app=null;ui.email='';ui.phone='';
  const params=new URLSearchParams(location.search);ui.nationality=D.countries.some(c=>c.code===params.get('passport'))?params.get('passport'):'';ui.residence=D.countries.some(c=>c.code===params.get('residence'))?params.get('residence'):'';
  const dialog=$('#visaPortalDialog');if(!dialog)return;
@@ -190,7 +190,7 @@ async function cards(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const dialog=$('#visaPortalDialog');if(!dialog)return;
- if(document.body.dataset.visaDetail){const code=(new URLSearchParams(location.search).get('destination')||document.body.dataset.destination);if(code)openPortal(code);else layout(baseHead('Choose a visa destination','Select a destination from the visa catalogue.'));}else dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
+ if(document.body.dataset.visaDetail){const code=(new URLSearchParams(location.search).get('destination')||document.body.dataset.destination);if(code)openPortal(code);else layout(baseHead('Choose a visa destination','Select a destination from the visa catalogue.')+'<p><a class="vp-primary" href="index.html#destinations">View all destinations →</a></p>');}else dialog.addEventListener('click',e=>{if(e.target===dialog)closePortal();});
  cards();
  const hero=$('#visaForm');if(hero){
  $('#passport').innerHTML=options();$('#residency').innerHTML=options();

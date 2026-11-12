@@ -15,9 +15,15 @@ for p in r.glob('*.html'):
  if len(set(parser.ids))!=len(parser.ids):errors.append(p.name+': duplicate IDs')
  for v in parser.links:
   u=urllib.parse.urlsplit(v)
-  if u.scheme or u.netloc or not u.path:continue
+  if u.scheme or u.netloc:continue
+  if not u.path:
+   if u.fragment and u.fragment not in parser.ids:errors.append(p.name+': missing fragment '+v)
+   continue
   target=r/urllib.parse.unquote(u.path)
   if not target.exists():errors.append(p.name+': missing '+u.path)
+  if target.exists() and target.suffix=='.html' and u.fragment:
+   target_parser=Page();target_parser.feed(target.read_text())
+   if u.fragment not in target_parser.ids:errors.append(p.name+': missing fragment '+v)
  if p.name not in ['admin.html','reset-password.html'] and '<link rel="canonical"' not in s:errors.append(p.name+': no canonical')
  if 'mailto:?' in s:errors.append(p.name+': mail draft without recipient')
 for p in r.glob('*.js'):

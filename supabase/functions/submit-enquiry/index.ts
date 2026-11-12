@@ -1,3 +1,4 @@
+import { enquiryEmail } from '../_shared/enquiry-email.mjs';
 // Public enquiry intake with application-level API-key checking, validation, deduplication and atomic rate limits.
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 const env=(key:string)=>Deno.env.get(key)||'';
@@ -39,13 +40,13 @@ Deno.serve(async req=>{
  const bucket=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
  const {data:allowed,error:rateError}=await db.rpc('website_allow_request',{bucket});
  if(rateError)throw rateError;if(!allowed)return respond({error:'Too many requests. Please call or WhatsApp +971 50 242 3340.'},429);
- const {data:saved,error}=await db.from('website_enquiries').insert(data).select('reference').single();
+ const {data:saved,error}=await db.from('website_enquiries').insert(data).select('reference,created_at').single();
  if(error){if(error.code==='23505'){const {data:existing}=await db.from('website_enquiries').select('reference,email').eq('id',data.id).single();if(existing?.email===data.email)return respond({ok:true,reference:existing.reference});}throw error;}
  let emailStatus='not_configured',emailId:null|string=null,emailError:null|string=null;
  const resend=env('RESEND_API_KEY'),from=env('RESEND_FROM_EMAIL');
  if(resend&&from){
  try{
- const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+resend,'Content-Type':'application/json','Idempotency-Key':'enquiry/'+data.id},body:JSON.stringify({from,to:[env('ENQUIRY_TO_EMAIL')||'skybridgefzco@gmail.com'],reply_to:data.email,subject:'Sky Bridge '+saved.reference+' · '+data.service,text:['Reference: '+saved.reference,'Name: '+data.name,'Email: '+data.email,'Phone: '+data.phone,'Company: '+data.company,'Service: '+data.service,'',data.message,'',JSON.stringify(data.details),'','View and manage: https://skybridgefze.com/admin.html'].join('\n')}),signal:AbortSignal.timeout(8000)});
+ const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+resend,'Content-Type':'application/json','Idempotency-Key':'enquiry/'+data.id},body:JSON.stringify({from,to:[env('ENQUIRY_TO_EMAIL')||'skybridgefzco@gmail.com'],reply_to:data.email,...enquiryEmail({...data,reference:saved.reference,created_at:saved.created_at})}),signal:AbortSignal.timeout(8000)});
  const result=await response.json();emailStatus=response.ok?'sent':'failed';emailId=result.id||null;emailError=response.ok?null:'Resend HTTP '+response.status;
  }catch{emailStatus='failed';emailError='Email service timeout or network failure';}
  }

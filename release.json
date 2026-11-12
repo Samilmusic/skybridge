@@ -1,0 +1,15 @@
+{
+  "assets": {
+    "admin.js": "e861e886ab7e",
+    "app.js": "5cf721818b02",
+    "config.example.js": "5880128417f3",
+    "config.js": "6ce8f946ec9b",
+    "enquiry-admin.js": "1741acac7c54",
+    "fun-admin.js": "c7ce0ce628ba",
+    "fun.js": "447adaac23a2",
+    "shared.css": "5c22fec66e9d",
+    "shared.js": "2bca6e822a86",
+    "visa-data.js": "85445c01627f",
+    "visa-portal.js": "b2514a64faf1"
+  }
+}
