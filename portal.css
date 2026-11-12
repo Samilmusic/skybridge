@@ -1,0 +1,9 @@
+
+.portal-dialog{background:#052c26;color:#fff;border:1px solid #d5fb0955;border-radius:22px;padding:30px;width:min(94vw,590px);max-height:85vh}
+.portal-dialog::backdrop{background:#000b}
+.portal-dialog form{display:grid;gap:14px}
+.portal-dialog label{display:grid;gap:8px;font-size:13px}
+.portal-dialog input,.portal-dialog select,.portal-dialog textarea{padding:13px;background:white;color:#00211e;border-radius:10px}
+.portal-top,.application-item{display:flex;justify-content:space-between;gap:12px}
+.application-item{padding:15px 0;border-bottom:1px solid #ffffff22}
+.portal-dialog{font-family:DM Sans,system-ui,sans-serif}.portal-dialog input{width:100%;box-sizing:border-box}.portal-dialog .btn{border:0;border-radius:40px;background:#d5fb09;color:#00211e;padding:13px 20px;font-weight:700;cursor:pointer}.portal-dialog .ghost{background:#ffffff15;color:white;border:1px solid #ffffff45}.portal-dialog #loginForm{display:grid;gap:16px}.portal-dialog label{display:grid;gap:8px}.portal-dialog a{color:#d5fb09}.portal-dialog h3{font-size:27px}.portal-dialog .portal-top{display:flex;align-items:center;justify-content:space-between;gap:15px}.portal-dialog .muted{color:#b3c8bb}.portal-dialog{width:min(650px,calc(100% - 32px));max-height:85dvh;background:#003c32;color:white;padding:28px;border:1px solid #ffffff40;border-radius:26px}.portal-dialog::backdrop{background:#001d18bd;backdrop-filter:blur(8px)}

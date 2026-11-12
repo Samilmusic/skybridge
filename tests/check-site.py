@@ -26,6 +26,7 @@ for p in r.glob('*.html'):
    if u.fragment not in target_parser.ids:errors.append(p.name+': missing fragment '+v)
  if p.name not in ['admin.html','reset-password.html'] and '<link rel="canonical"' not in s:errors.append(p.name+': no canonical')
  if 'mailto:?' in s:errors.append(p.name+': mail draft without recipient')
+ if 'class="sb-site-header"' in s and 'src="shared.js' not in s:errors.append(p.name+': navigation runtime missing')
 for p in r.glob('*.js'):
  result=subprocess.run(['node','--check',str(p)],capture_output=True,text=True)
  if result.returncode:errors.append(result.stderr)

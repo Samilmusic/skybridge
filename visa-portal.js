@@ -66,6 +66,7 @@ function steps(){
 function field(label,html){return '<label class="vp-field"><span>'+label+'</span>'+html+'</label>'}
 function render(){
  if(!ui.dest)return;
+ const host=$('#visaPortalBody');if(host)host.dataset.step=String(ui.step);
  const dest=ui.dest,prod=ui.product;
  if(ui.step===0){
   const filtered=allowedProducts();
